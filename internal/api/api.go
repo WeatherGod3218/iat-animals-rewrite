@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"os"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 
@@ -23,27 +24,22 @@ func replaceNullWithString(obj map[string]interface{}) {
 	}
 }
 
-func chooseAirtableMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tableName, err := firebase.GetLowestTable(c)
-		if err != nil {
-			logging.Logger.WithFields(logrus.Fields{"error": err, "module": "api", "method": "chooseAirtableMiddleware"}).Fatal("error deciding which airtable to use!")
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error selecting dataset to display.", "error": err.Error()})
-			return
-		}
-
-		tableURI := os.Getenv("AIRTABLE_TABLE" + tableName)
-
-		airTable, err := airtable.GetAirtableURI(tableURI)
-		if err != nil {
-			logging.Logger.WithFields(logrus.Fields{"error": err, "module": "api", "method": "chooseAirtableMiddleware"}).Fatal("error fetching airtable!")
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Error fetching dataset.", "error": err.Error()})
-			return
-		}
-
-		c.Set("airtable", airTable)
-		c.Next()
+func getAirtableData(c *gin.Context) ([]map[string]interface{}, error) {
+	tableName, err := firebase.GetLowestTable(c)
+	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "api", "method": "getAirtableData"}).Warn("error deciding which airtable to use!")
+		return nil, err
 	}
+
+	tableURI := os.Getenv("AIRTABLE_TABLE" + tableName)
+
+	airTable, err := airtable.GetAirtableURI(tableURI)
+	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "api", "method": "getAirtab"}).Warn("error fetching airtable!")
+		return nil, err
+	}
+
+	return airTable, nil
 }
 
 func GetHomepage(c *gin.Context) {
@@ -51,7 +47,44 @@ func GetHomepage(c *gin.Context) {
 }
 
 func GetData(c *gin.Context) {
+	data, err := getAirtableData(c)
+	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "api", "method": "chooseAirtableMiddleware"}).Fatal("error fetching airtable!")
 
+	}
+
+	images := make([]string, 0)
+	test_stimuli := make([]map[string]interface{}, 0)
+	categoryWordImage := "words_animate_Cat1.png"
+
+	sort.Slice(data, func(i, j int) bool {
+		return data[i]["trial"].(float64) < data[j]["trial"].(float64)
+	})
+
+	for _, fields := range data {
+		if fields["stimulus"] == "inert" && fields["correct_key"] == "d" {
+			categoryWordImage = "words_animate_Cat2.png"
+		}
+
+		if fields["stimulus_type"] == "image" {
+			if stimulus, ok := fields["stimulus"].(string); ok {
+				images = append(images, stimulus)
+			}
+		}
+
+		if fields["correct_key"] == "d" {
+			fields["association"] = "left"
+		} else {
+			fields["association"] = "right"
+		}
+		test_stimuli = append(test_stimuli, fields)
+
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"test_stimuli":        "hi",
+		"category_word_image": categoryWordImage,
+	})
 }
 
 func SubmitResults(c *gin.Context) {

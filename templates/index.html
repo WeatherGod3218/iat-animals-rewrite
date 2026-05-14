@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>IAT Humans Experiment</title>
+    <title>IAT Animals Experiment</title>
     <script defer src="https://unpkg.com/jspsych@8.0.0"></script>
     <link href="https://unpkg.com/jspsych@8.0.0/css/jspsych.css" rel="stylesheet" type="text/css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,8 +47,8 @@
 
         async function fetchData() {
             try {
-                const response = await fetch('https://iat-humans.vercel.app/get-data'); // Make the GET request
-                // const response = await fetch('http://localhost:3000/get-data'); // Make the GET request
+                //const response = await fetch('https://iat-animals.vercel.app/get-data'); // Make the GET request
+                const response = await fetch('http://localhost:3000/get-data'); // Make the GET request
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -114,7 +114,7 @@
                 }
             }
 
-            let subject_id = "iat_humans_" + Math.floor(Math.random() * 1000000);
+            let subject_id = "iat_animal_" + Math.floor(Math.random() * 1000000);
             let worker_id = getParamFromURL('PROLIFIC_PID') || subject_id;
             let study_id = getParamFromURL('STUDY_ID') || "NULL";
             let session_id = getParamFromURL('SESSION_ID') || "NULL";
@@ -557,45 +557,31 @@
             timeline.push(demographics_three)
 
             const demographic_four = {
-                type: jsPsychSurvey,
-                survey_json: {
-                    showQuestionNumbers: false,
-                    elements:
-                        [
-                            {
-                                type: 'text',
-                                title: "How would you describe the difference between Category 1 words and Category 2 words?",
-                                name: 'differences',
-                                placeholder: 'Comments here',
-                                isRequired: true
-                            }
-                        ]},
+                type: jsPsychSurveyHtmlForm,
+                html: `
+                    <label style="font-weight: bold" for="differences">How would you describe the difference between Category 1 words and Category 2 words?</label><br>
+                    <input class="demo-input" placeholder="Comments here" type="text" id="differences" name="differences" required>
+                `,
+                button_label: 'Continue'
             }
 
             timeline.push(demographic_four)
 
             const comment_block = {
-                type: jsPsychSurvey,
-                survey_json: {
-                    showQuestionNumbers: false,
-                    elements:
-                        [
-                            {
-                                type: 'radiogroup',
-                                title: "Did you experience any technical difficulties with this task?",
-                                name: 'technical_difficulties',
-                                choices: ["Yes", "No"],
-                                isRequired: true
-                            },
-                            {
-                                type: 'text',
-                                title: "If yes, please describe your experience.",
-                                name: 'difficulty_description',
-                                placeholder: 'Describe any technical difficulties',
-                                required: false
-                            }
+                type: jsPsychSurveyHtmlForm,
+                html: `
+                    <div style="text-align: center;">
+                        <p style="font-weight: bold">Did you experience any technical difficulties with this task?</p>
+                        <input type="radio" id="technical_difficulties_yes" name="technical_difficulties" value="Yes" required>
+                        <label for="technical_difficulties_yes">Yes</label><br>
+                        <input type="radio" id="technical_difficulties_no" name="technical_difficulties" value="No" required>
+                        <label for="technical_difficulties_no">No</label><br><br>
 
-                        ]},
+                        <label style="font-weight: bold" for="difficulty_description">If yes, please describe your experience.</label><br>
+                        <input class="demo-input" style="margin-left: 0;" placeholder="Describe any technical difficulties" type="text" id="difficulty_description" name="difficulty_description">
+                    </div>
+                `,
+                button_label: 'Continue',
                 on_finish: function(data) {
                     sendResults(jsPsych.data.get()['trials']);
                 }
@@ -609,7 +595,7 @@
                 choices:'NO_KEYS',
                 on_start: function (data) {
                     setTimeout(()=>{
-                        window.location = `https://rit.az1.qualtrics.com/jfe/form/SV_4Pj9H2mBrf8CMd0?PROLIFIC_PID=${worker_id}&STUDY_ID=${study_id}&SESSION_ID=${session_id}`
+                        window.location = `https://rit.az1.qualtrics.com/jfe/form/SV_0DkQMT9M3jFY16e?PROLIFIC_PID=${worker_id}&STUDY_ID=${study_id}&SESSION_ID=${session_id}`
                     }, 10000)
                 }
             }
@@ -622,7 +608,7 @@
         async function sendResults(results) {
             try {
                 // const response = await fetch('http://localhost:3000/submit-results', {
-                const response = await fetch('https://iat-humans.vercel.app/submit-results', {
+                const response = await fetch('https://iat-animals.vercel.app/submit-results', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -646,53 +632,6 @@
         }
 
     </script>
-    <style>
-        body{
-            font-family: "Roboto", sans-serif !important;
-            font-optical-sizing: auto;
-            font-variation-settings: "wdth" 100;
-        }
-
-        #jspsych-iat-stim{
-            font-size: 48px;
-            font-weight: bold;
-        }
-
-        #jspsych-iat-stim img{
-            transform: translateY(-26%);
-        }
-
-        #trial_left_align{
-            left:28% !important;
-        }
-
-        #trial_right_align{
-            right: 28% !important;
-        }
-
-        #wrongImgContainer{
-            top:-535px !important;
-        }
-
-
-
-        .jspsych-survey-html-form-preamble h1{
-            width:100%;
-            font-weight: 800 !important;
-            text-align: left;
-
-        }
-
-        .jspsych-survey-html-form-preamble{
-            width:100%;
-        }
-
-        .jspsych-btn{
-            margin-top: 24px!important;
-            margin-left:0 !important;
-        }
-
-    </style>
 </head>
 <body>
 
