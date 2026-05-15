@@ -18,7 +18,7 @@ func main() {
 	router.Use(cors.Default())
 
 	router.GET("/", api.GetHomepage)
-	router.GET("/get-data", api.ChooseAirtableMiddleware(), api.GetData)
+	router.GET("/get-data", api.GetData)
 
 	router.Run(":" + PORT)
 }

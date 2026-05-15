@@ -24,7 +24,7 @@ func replaceNullWithString(obj map[string]interface{}) {
 	}
 }
 
-func getAirtableData(c *gin.Context) ([]map[string]interface{}, error) {
+func getAirtableData(c *gin.Context) ([]airtable.AirtableRecord, error) {
 	tableName, err := firebase.GetLowestTable(c)
 	if err != nil {
 		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "api", "method": "getAirtableData"}).Warn("error deciding which airtable to use!")
@@ -46,6 +46,15 @@ func GetHomepage(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.html", gin.H{})
 }
 
+func contains(slice []string, item string) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
+}
+
 func GetData(c *gin.Context) {
 	data, err := getAirtableData(c)
 	if err != nil {
@@ -54,35 +63,61 @@ func GetData(c *gin.Context) {
 	}
 
 	images := make([]string, 0)
-	test_stimuli := make([]map[string]interface{}, 0)
+	test_stimuli := make([]airtable.AirtableClientResponse, 0)
 	categoryWordImage := "words_animate_Cat1.png"
+	categoryDisplay := map[int][][]string{
+		1: make([][]string, 2),
+		2: make([][]string, 2),
+		3: make([][]string, 2),
+	}
 
 	sort.Slice(data, func(i, j int) bool {
-		return data[i]["trial"].(float64) < data[j]["trial"].(float64)
+		return data[i].Fields.Trial < data[j].Fields.Trial
 	})
 
-	for _, fields := range data {
-		if fields["stimulus"] == "inert" && fields["correct_key"] == "d" {
+	for _, record := range data {
+
+		if record.Fields.Stimulus == "inert" && record.Fields.CorrectKey == "d" {
 			categoryWordImage = "words_animate_Cat2.png"
 		}
 
-		if fields["stimulus_type"] == "image" {
-			if stimulus, ok := fields["stimulus"].(string); ok {
-				images = append(images, stimulus)
-			}
+		if record.Fields.StimulusType == "image" {
+			images = append(images, record.Fields.Stimulus)
 		}
 
-		if fields["correct_key"] == "d" {
-			fields["association"] = "left"
+		var stimuliField airtable.AirtableClientResponse
+		onLeft := record.Fields.CorrectKey == "d"
+		if onLeft {
+			stimuliField = airtable.GetResponse(record.Fields, "left")
 		} else {
-			fields["association"] = "right"
+			stimuliField = airtable.GetResponse(record.Fields, "right")
 		}
-		test_stimuli = append(test_stimuli, fields)
+		test_stimuli = append(test_stimuli, stimuliField)
 
+		idx := 1
+		if onLeft {
+			idx = 0
+		}
+
+		if !contains(categoryDisplay[record.Fields.Block][idx], record.Fields.Category) {
+			categoryDisplay[record.Fields.Block][idx] = append(categoryDisplay[record.Fields.Block][idx], record.Fields.Category)
+		}
+	}
+
+	for k := range categoryDisplay {
+		sort.Slice(categoryDisplay[k][0], func(i, j int) bool {
+			return len(categoryDisplay[k][0][i]) < len(categoryDisplay[k][0][j])
+		})
+
+		sort.Slice(categoryDisplay[k][1], func(i, j int) bool {
+			return len(categoryDisplay[k][1][i]) < len(categoryDisplay[k][1][j])
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"test_stimuli":        "hi",
+		"test_stimuli":        test_stimuli,
+		"images":              images,
+		"category_display":    categoryDisplay,
 		"category_word_image": categoryWordImage,
 	})
 }

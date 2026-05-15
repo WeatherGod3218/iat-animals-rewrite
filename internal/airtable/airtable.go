@@ -4,17 +4,52 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
+
 	"net/http"
 	"net/url"
 	"os"
 )
 
-type AirtableResponse struct {
-	Records []map[string]interface{} `json:"records"`
-	Offset  string                   `json:"offset"`
+type AirtableRecord struct {
+	ID          string       `json:"id"`
+	CreatedTime time.Time    `json:"createdTime"`
+	Fields      AirtableData `json:"fields"`
 }
 
-func GetAirtableURI(table string) ([]map[string]interface{}, error) {
+type AirtableAPIResponse struct {
+	Records []AirtableRecord `json:"records"`
+	Offset  string           `json:"offset"`
+}
+
+type AirtableData struct {
+	Block           int    `json:"block"`
+	Item            string `json:"item"`
+	Stimulus        string `json:"stimulus"`
+	CorrectKey      string `json:"correct_key"`
+	StimulusType    string `json:"stimulus_type"`
+	Trial           int    `json:"trial"`
+	Category        string `json:"category"`
+	Order           int    `json:"order"`
+	TrialType       string `json:"trial_type"`
+	CategoryDisplay string `json:"category_display"`
+}
+
+type AirtableClientResponse struct {
+	Block           int    `json:"block"`
+	Item            string `json:"item"`
+	Stimulus        string `json:"stimulus"`
+	CorrectKey      string `json:"correct_key"`
+	StimulusType    string `json:"stimulus_type"`
+	Trial           int    `json:"trial"`
+	Category        string `json:"category"`
+	Order           int    `json:"order"`
+	TrialType       string `json:"trial_type"`
+	CategoryDisplay string `json:"category_display"`
+	Association     string `json:"association"`
+}
+
+func GetAirtableURI(table string) ([]AirtableRecord, error) {
 	base := os.Getenv("AIRTABLE_BASE")
 	baseURL := fmt.Sprintf(
 		"https://api.airtable.com/v0/%s/%s",
@@ -22,7 +57,7 @@ func GetAirtableURI(table string) ([]map[string]interface{}, error) {
 		url.PathEscape(table),
 	)
 
-	var allRecords []map[string]interface{}
+	var allRecords []AirtableRecord
 	var offset string
 
 	client := &http.Client{}
@@ -62,7 +97,7 @@ func GetAirtableURI(table string) ([]map[string]interface{}, error) {
 			)
 		}
 
-		var result AirtableResponse
+		var result AirtableAPIResponse
 
 		err = json.Unmarshal(body, &result)
 		if err != nil {
@@ -79,4 +114,20 @@ func GetAirtableURI(table string) ([]map[string]interface{}, error) {
 	}
 
 	return allRecords, nil
+}
+
+func GetResponse(field AirtableData, association string) AirtableClientResponse {
+	return AirtableClientResponse{
+		Block:           field.Block,
+		Item:            field.Item,
+		Stimulus:        field.Stimulus,
+		CorrectKey:      field.CorrectKey,
+		StimulusType:    field.StimulusType,
+		Trial:           field.Block,
+		Category:        field.Category,
+		Order:           field.Block,
+		TrialType:       field.TrialType,
+		CategoryDisplay: field.CategoryDisplay,
+		Association:     association,
+	}
 }
