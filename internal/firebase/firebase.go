@@ -39,6 +39,10 @@ func InitFirebase(ctx context.Context) {
 }
 
 func PushToDatabase(ctx context.Context, cleanedData map[string]interface{}) error {
+	if database == nil {
+		return fmt.Errorf("Firebase has not been initalized")
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -48,6 +52,10 @@ func PushToDatabase(ctx context.Context, cleanedData map[string]interface{}) err
 }
 
 func GetLowestTable(ctx context.Context) (string, error) {
+	if database == nil {
+		return "", fmt.Errorf("Firebase has not been initalized")
+	}
+
 	ref := database.NewRef("count")
 
 	var countData map[string]int
