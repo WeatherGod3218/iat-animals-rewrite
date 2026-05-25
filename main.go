@@ -29,6 +29,8 @@ func main() {
 
 	router := gin.Default()
 
+	router.Use(cors.Default())
+
 	tmpl := template.Must(template.ParseFS(embeddedFS, "templates/*"))
 	router.SetHTMLTemplate(tmpl)
 
@@ -38,8 +40,6 @@ func main() {
 	}
 
 	router.StaticFS("/static", http.FS(publicFS))
-
-	router.Use(cors.Default())
 
 	router.GET("/", api.GetHomepage)
 	router.GET("/get-data", api.GetData)
