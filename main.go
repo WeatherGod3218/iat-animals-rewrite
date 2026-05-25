@@ -1,6 +1,9 @@
 package main
 
 import (
+	"io/fs"
+	"net/http"
+
 	"embed"
 	"html/template"
 
@@ -12,7 +15,11 @@ import (
 
 const PORT string = "3000"
 
+//go:embed templates/*
 var templateFS embed.FS
+
+//go:embed templates/* public/*
+var embeddedFS embed.FS
 
 func templateFromEmbed() *template.Template {
 	tmpl := template.Must(template.ParseFS(templateFS, "templates/*"))
@@ -22,8 +29,16 @@ func templateFromEmbed() *template.Template {
 func main() {
 
 	router := gin.Default()
-	router.SetHTMLTemplate(templateFromEmbed())
-	router.Static("/static", "./public")
+
+	tmpl := template.Must(template.ParseFS(embeddedFS, "templates/*"))
+	router.SetHTMLTemplate(tmpl)
+
+	publicFS, err := fs.Sub(embeddedFS, "public")
+	if err != nil {
+		panic(err)
+	}
+
+	router.StaticFS("/static", http.FS(publicFS))
 
 	router.Use(cors.Default())
 
