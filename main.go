@@ -3,6 +3,7 @@ package main
 import (
 	"io/fs"
 	"net/http"
+	"os"
 
 	"embed"
 	"html/template"
@@ -12,8 +13,6 @@ import (
 
 	api "github.com/WeatherGod3218/iat-animals-rewrite/internal/api"
 )
-
-const PORT string = "3000"
 
 //go:embed templates/*
 var templateFS embed.FS
@@ -45,5 +44,10 @@ func main() {
 	router.GET("/", api.GetHomepage)
 	router.GET("/get-data", api.GetData)
 
-	router.Run(":" + PORT)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	router.Run(":" + port)
 }
