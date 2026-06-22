@@ -14,7 +14,7 @@ RUN go build -v -o experiment
 FROM docker.io/alpine
 RUN apk add --no-cache tzdata
 
-COPY public /static
+COPY public /public
 COPY --from=build /src/templates /template
 COPY --from=build /src/experiment /experiment
 
