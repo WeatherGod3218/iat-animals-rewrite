@@ -6,17 +6,16 @@ COPY go.* .
 RUN go mod download
 
 COPY internal internal
-COPY logging logging
 COPY templates templates
 
 COPY *.go .
-RUN go build -v -o iatanimals
+RUN go build -v -o experiment
 
 FROM docker.io/alpine
 RUN apk add --no-cache tzdata
 
-COPY templates /templates
-COPY public /public
-COPY --from=build /src/iatanimals /iatanimals
+COPY public /static
+COPY --from=build /src/templates /template
+COPY --from=build /src/experiment /experiment
 
-ENTRYPOINT [ "/iatanimals" ]
+ENTRYPOINT [ "/experiment" ]

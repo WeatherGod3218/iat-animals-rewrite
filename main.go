@@ -1,48 +1,65 @@
 package main
 
 import (
-	"io/fs"
-	"net/http"
+	"context"
+	"encoding/json"
+	"maps"
 	"os"
+	"slices"
 
 	"embed"
 	"html/template"
 
+	"github.com/WeatherGod3218/mlc-project-template/internal/airtable"
+	"github.com/WeatherGod3218/mlc-project-template/internal/firebase"
+	"github.com/WeatherGod3218/mlc-project-template/internal/logging"
+	"github.com/WeatherGod3218/mlc-project-template/internal/redis"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	api "github.com/WeatherGod3218/iat-animals-rewrite/internal/api"
+	"github.com/sirupsen/logrus"
 )
 
 //go:embed templates/*
-var templateFS embed.FS
-
-//go:embed templates/* public/*
 var embeddedFS embed.FS
 
-func templateFromEmbed() *template.Template {
-	tmpl := template.Must(template.ParseFS(templateFS, "templates/*"))
-	return tmpl
-}
-
 func main() {
+	redis.InitRedis()
+	firebase.InitFirebase(context.Background())
+
+	var tableMap map[string]string
+	var tableList []string
+
+	err := json.Unmarshal([]byte(os.Getenv("AIRTABLE_TABLES")), &tableMap)
+	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "main", "method": "main"}).Fatal("error loading airtables!")
+	}
+
+	tableList = slices.Collect(maps.Keys(tableMap))
+
+	err = firebase.CreateCountTables(tableList)
+	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "main", "method": "CreateCountTables"}).Fatal("error creating count tables!")
+	}
+
+	err = redis.InitQueue(tableList)
+	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "main", "method": "LoadAllAirtables"}).Fatal("error queuing redis airtables!")
+	}
+
+	err = airtable.LoadAllAirtables(tableMap)
+	if err != nil {
+		logging.Logger.WithFields(logrus.Fields{"error": err, "module": "main", "method": "LoadAllAirtables"}).Fatal("error loading airtables!")
+	}
 
 	router := gin.Default()
-
 	router.Use(cors.Default())
 
 	tmpl := template.Must(template.ParseFS(embeddedFS, "templates/*"))
 	router.SetHTMLTemplate(tmpl)
 
-	publicFS, err := fs.Sub(embeddedFS, "public")
-	if err != nil {
-		panic(err)
-	}
-
-	router.StaticFS("/static", http.FS(publicFS))
-
-	router.GET("/", api.GetHomepage)
-	router.GET("/get-data", api.GetData)
+	router.GET("/", redis.RedisRateLimiter(1, 50), GetHomepage)
+	router.GET("/get-data", redis.RedisRateLimiter(1, 50), GetData)
+	router.POST("/submit-results", redis.RedisRateLimiter(1, 50), SubmitResults)
 
 	port := os.Getenv("PORT")
 	if port == "" {
